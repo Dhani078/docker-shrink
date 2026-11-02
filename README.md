@@ -5,78 +5,103 @@ docker-shrink
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D20.0.0-green.svg)](https://nodejs.org/)
 [![Zero Dependencies](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](#)
 
-Automated Dockerfile multi-stage analyzer and image size minimizer. Analyzes Dockerfiles, strips build-time bloat, converts single-stage containers to multi-stage distroless/alpine builds, and cuts final image size by 70 to 90 percent.
+Zero-dependency Dockerfile analyzer and layer optimizer. Shrinks container image sizes by 40 to 80 percent by detecting bloated base images, combining RUN instructions, clearing package caches, and suggesting multi-stage builds.
 
 ---
 
-The Problem
+THE PROBLEM
 
-Modern application Docker images frequently swell to 1 GB or 2 GB:
-- Build dependencies (compilers, git, devDependencies) are shipped into production containers.
-- Package manager cache directories (npm cache, pip cache, apt cache) are retained in intermediate layers.
-- Oversized base images (ubuntu, debian, node:latest) are used instead of minimal runtimes.
-- Massive images cause slow CI/CD deployments and fill production server disks.
-
----
-
-The Solution
-
-docker-shrink parses Dockerfile instructions, detects the target runtime (Node, Python, Go, Rust, Java, PHP), and outputs an optimized multi-stage Dockerfile:
-- Stage 1: Build stage with full compiler and development toolchain.
-- Stage 2: Minimal production runtime (alpine or gcr.io/distroless) containing only compiled artifacts.
-- Automatically injects package manager cache cleanup commands.
-- Configures non-root user execution for container hardening.
+Bloated Docker images degrade developer velocity and cloud budgets:
+- Base images like node:latest or python:latest introduce 800MB to 1.2GB of unused tools.
+- Multiple consecutive RUN commands create immutable layered file bloat.
+- Package managers (apt, apk, pip, npm) leave hundreds of megabytes of cached tarballs on disk.
+- Missing .dockerignore causes local node_modules, logs, and git folders to be bundled into production containers.
+- Deployment pull times slow down Kubernetes autoscaling and CI pipelines.
 
 ---
 
-Installation and Usage
+THE SOLUTION
 
-Run directly via npx:
+docker-shrink statically inspects your Dockerfile and project structure:
+- Base Image Optimization: Recommends Alpine, Slim, or Distroless alternatives.
+- Layer Consolidation: Identifies chained RUN patterns to eliminate intermediate layer bloat.
+- Cache Purging: Detects missing cache cleanups (apt-get clean, rm -rf /var/lib/apt/lists).
+- .dockerignore Verification: Audits and generates standard ignore templates.
+- Automated Fix Mode: Automatically writes optimized Dockerfile with --fix flag.
+
+---
+
+QUICKSTART
+
+Analyze Dockerfile in current directory:
 
 ```bash
-npx docker-shrink Dockerfile
+npx docker-shrink
 ```
 
-Output optimized Dockerfile to a new file:
+Inspect a specific Dockerfile:
 
 ```bash
-npx docker-shrink Dockerfile --out Dockerfile.prod
+npx docker-shrink path/to/Dockerfile
 ```
 
-Display diff preview without writing:
+Automatically apply recommended optimizations:
 
 ```bash
-npx docker-shrink Dockerfile --diff
+npx docker-shrink --fix
 ```
 
 ---
 
-CLI Options
+COMMAND MATRIX
 
-- `--diff`: Show colorized unified diff between current and proposed Dockerfile.
-- `--out <path>`: Write optimized output to specified file path.
-- `--base <type>`: Choose production base image type: alpine, distroless, or slim.
-- `--non-root`: Ensure production stage enforces non-root USER directive.
-- `--json`: Output analysis metrics and projected size savings as JSON.
-
----
-
-Optimization Strategy
-
-1. Multi-Stage Separation
-Separates compilation assets from deployment runtime.
-
-2. Cache Busting Layer Optimization
-Combines `RUN apt-get update && apt-get install && rm -rf /var/lib/apt/lists` into single layer.
-
-3. Production Dependency Trimming
-Applies `npm prune --production` or `--no-dev` flags during dependency copying.
-
-4. Non-Root Security
-Adds dedicated non-privileged system user for container execution.
+Command | Argument | Description | Default
+--- | --- | --- | ---
+docker-shrink | [file] | Analyze specified or local Dockerfile | ./Dockerfile
+docker-shrink --fix | [file] | Apply optimizations directly to file | Creates backup
+docker-shrink --check | [file] | CI mode, fails with code 1 if bloat detected | Read only
+docker-shrink --help | None | Print comprehensive command list and flags | Flag
+docker-shrink --version | None | Print current semantic version | Flag
 
 ---
 
-Author
+CLI OPTIONS
 
-Dhani078
+- `--fix`: Rewrite Dockerfile with verified layer optimizations.
+- `--check`: Run in strict lint mode for CI/CD pipeline checks.
+- `--json`: Output findings and layer metrics as structured JSON.
+- `--output <path>`: Write optimized output to new file instead of overwriting.
+
+---
+
+INTERACTIVE WORKFLOW PREVIEW
+
+```
+$ npx docker-shrink Dockerfile
+
+[docker-shrink] Inspecting Dockerfile layer efficiency...
+
+Line | Rule Triggered         | Current Instruction            | Recommended Optimization
+-----|------------------------|--------------------------------|------------------------------------
+1    | Heavy Base Image       | FROM node:latest               | FROM node:20-alpine
+5    | Package Cache Bloat    | RUN apt-get install -y curl    | RUN apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists
+8    | Uncached Layer Order   | COPY . .                       | COPY package.json package-lock.json ./ (order before app source)
+
+Estimated size reduction: 940 MB -> 180 MB (80.8% reduction)
+Run 'npx docker-shrink --fix' to automatically apply optimizations.
+```
+
+---
+
+DATA SAFETY GUARANTEES
+
+- Automatic Backup: Modifying a Dockerfile via --fix automatically creates Dockerfile.backup.
+- Offline Standard Library: Pure Node.js filesystem analysis with zero external dependencies.
+
+---
+
+LICENSE AND AUTHOR
+
+- License: MIT License
+- Author: Dhani078 (dhanisepeda@gmail.com)
+- Source Repository: https://github.com/Dhani078/docker-shrink

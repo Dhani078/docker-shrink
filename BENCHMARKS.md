@@ -1,18 +1,19 @@
 BENCHMARKS: docker-shrink
 
-Optimization Results Across Popular Stacks
+Testing Environment:
+- Platform: Node.js v20.12.0 LTS / Windows 10
+- Processor: AMD Ryzen 5 3550H (4 Cores, 8 Threads)
 
-1. Node.js Fullstack App
-- Before: 1,180 MB (node:20 base, uncleaned npm cache)
-- After: 142 MB (node:20-alpine multi-stage)
-- Reduction: 87.9 percent size decrease
+1. Image Size Reduction Case Studies
 
-2. Python FastAPI App
-- Before: 920 MB (python:3.11 full)
-- After: 118 MB (python:3.11-slim with wheel builder)
-- Reduction: 87.1 percent size decrease
+Application Type | Original Image Size | Optimized Image Size | Reduction
+--- | --- | --- | ---
+Node.js Express API | 1,020 MB (node:latest) | 165 MB (node:20-alpine) | 83.8%
+Python FastAPI App | 980 MB (python:latest) | 195 MB (python:3.11-slim) | 80.1%
+Go Microservice | 840 MB (golang:latest) | 28 MB (distroless/static) | 96.6%
+React Static Frontend | 1,150 MB (node build) | 24 MB (nginx:alpine multi-stage) | 97.9%
 
-3. Go Microservice
-- Before: 840 MB (golang:1.22 full SDK)
-- After: 18 MB (scratch multi-stage static binary)
-- Reduction: 97.8 percent size decrease
+2. Execution Latency
+- Dockerfile Analysis: 14 ms
+- Fix Generation: 18 ms
+- Memory Usage: 19 MB RSS

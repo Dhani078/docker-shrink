@@ -1,7 +1,13 @@
 FAQ: docker-shrink
 
-Q: Will docker-shrink break my production build scripts?
-A: docker-shrink creates a separate optimized file (`Dockerfile.optimized`) by default, leaving your original Dockerfile untouched until you review the diff.
+Q1: Why is Alpine not always recommended for Python?
+A: Alpine uses musl libc instead of glibc. For Python packages with pre-compiled C-extensions (numpy, pandas), Alpine requires compiling from source, increasing build times. For Python, docker-shrink recommends python:3.11-slim or distroless.
 
-Q: How does it achieve 70 percent image size reductions?
-A: It replaces bloated base images (such as `node:latest` which is 1.1GB) with minimal alternatives (`node:22-alpine` or `distroless` at 180MB) and collapses chained RUN commands to delete temporary apt/apk package caches in the same layer.
+Q2: Does docker-shrink modify my working container configuration?
+A: Only when --fix is explicitly passed. A backup file (Dockerfile.backup) is always created first.
+
+Q3: Can docker-shrink create multi-stage builds?
+A: Yes. When it detects both build tools and runtime execution in the same stage, it recommends splitting into builder and runner stages.
+
+Q4: Does docker-shrink require the Docker daemon to be running?
+A: No. docker-shrink performs static text and AST analysis. You do not need Docker installed or running to optimize your Dockerfiles.
